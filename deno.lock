@@ -1,0 +1,17 @@
+{
+  "version": "3",
+  "redirects": {
+    "https://esm.sh/@types/three@~0.183.1/index.d.ts": "https://esm.sh/@types/three@0.183.1/index.d.ts",
+    "https://esm.sh/three": "https://esm.sh/three@0.184.0"
+  },
+  "remote": {
+    "https://esm.sh/three/addons/controls/OrbitControls.js": "ac6f4ddcd11bbf5c19cf775f08e9d2ec7841c5228abc90c5f4fad9d6db215f5c",
+    "https://esm.sh/three@0.184.0": "e1f3ba3589d1d209ccb5e5313e48ff56aec1a5292f5cec2c87398d03460b10a2",
+    "https://esm.sh/three@0.184.0/addons/controls/OrbitControls.js": "ac6f4ddcd11bbf5c19cf775f08e9d2ec7841c5228abc90c5f4fad9d6db215f5c",
+    "https://esm.sh/three@0.184.0/denonext/build/three.core.mjs": "3f5ea85e3ca2d1cbaf8fabbb6c7db9c0d2a89865392a65da4366d5b82301134f",
+    "https://esm.sh/three@0.184.0/denonext/three.mjs": "2e78b58210e60165f73c9c3e1b968639dd894cb2f5cbe281bc776ee678e8ebce",
+    "https://esm.sh/three@0.184.0/es2022/addons/controls/OrbitControls.mjs": "85d5701e4389558696a27110d24ab8e2ccacbdcc6417590ec749f71c24a2b527",
+    "https://esm.sh/three@0.184.0/es2022/build/three.core.mjs": "6854e5812840633edb45d3fa4e139fc4846bfff544ab542dfbbd7ebd0841f616",
+    "https://esm.sh/three@0.184.0/es2022/three.mjs": "2e78b58210e60165f73c9c3e1b968639dd894cb2f5cbe281bc776ee678e8ebce"
+  }
+}
