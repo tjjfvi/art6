@@ -1,0 +1,8 @@
+[[language]]
+name = "javascript"
+file-types = ["js"]
+language-servers = ["deno"]
+
+[language-server.deno]
+command = "deno"
+args = ["lsp"]
