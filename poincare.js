@@ -1,117 +1,66 @@
-"use strict"
 
-const canvas = document.getElementsByTagName("canvas")[0]
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+import * as t from "https://esm.sh/three@0.184.0";
+import { OrbitControls } from 'https://esm.sh/three@0.184.0/addons/controls/OrbitControls.js';
+
+const width = window.innerWidth, height = window.innerHeight;
+
+const camera = new t.PerspectiveCamera( 70, width / height, 0.01, 100 );
+camera.position.set(0,0,2.5);
+
+const scene = new t.Scene();
+
+function point(p) {
+  p = R3.from(p)
+  const mesh = new t.Mesh(new t.SphereGeometry(.01), new t.MeshNormalMaterial());
+  mesh.position.set(p.x,p.y,p.z)
+  scene.add(mesh)
+}
+
+scene.add(new t.Mesh(new t.SphereGeometry(1, 100, 100), new t.MeshBasicMaterial({
+  color: new t.Color("#ffffff"),
+  opacity: .06,
+  transparent: true,
+  side: t.DoubleSide
+})))
+
+function randR3() {
+  const theta = Math.random() * tau
+  const phi = Math.acos(1 - 2 * Math.random())
+  const r = Math.random() ** (1/3) * .8
+  return new R3(
+    cos(theta) * sin(phi) * r,
+    sin(theta) * sin(phi) * r,
+    cos(phi) * r,
+  )
+}
+
+function main() {
+  for(let i = 0; i < 10; i++) {
+    let p = new H3(randR3())
+    let q = new H3(randR3())
+    point(p)
+    point(q)
+    for(let t = 0; t <= 1; t += .01) {
+      point(p.lerp(q, t))
+    }
+  }
+}
+
+const renderer = new t.WebGLRenderer({ antialias: true });
+renderer.setSize(width, height);
+renderer.setAnimationLoop(tick);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.update();
+
+function tick() {
+  controls.update();
+  renderer.render( scene, camera );
+}
 
 const tau = Math.PI * 2;
 const { cos, sin, tan, sqrt, min, max, atan2, hypot, tanh, atanh } = Math
-
-const ctx = canvas.getContext("2d")
-
-function main() {
-  let p = new H2(new R2(0, 0))
-  let q = new H2(new R2(0, 1/2))
-
-  function draw() {
-    ctx.reset()
-    ctx.translate(canvas.width / 2, canvas.height / 2)
-    ctx.scale(1, -1)
-    ctx.scale(200, 200)
-
-    function point(p) {
-      ctx.fillStyle="black";
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, 5/200, 0, tau)
-      ctx.fill()
-    }
-
-    function line(p,q) {
-      ctx.beginPath()
-      ctx.moveTo(p.x,p.y)
-      ctx.lineTo(q.x,q.y)
-      ctx.stroke()
-    }
-
-    ctx.lineWidth = 1/200;
-    ctx.beginPath()
-    ctx.arc(0,0,1,0,tau)
-    ctx.stroke()
-
-    for(let t = 0; t <= 1; t += .1) {
-      point(p.lerp(q, t).r2)
-    }
-    p = p.r2;
-    q = q.r2;
-    let p_ = inv(p)
-    let q_ = inv(q)
-    if(!p_ || !q_) {
-      line(p,q)
-    } else {
-      let m = mid(p,p_)
-      let n = mid(q,q_)
-      let m_ = perp(m, p)
-      let n_ = perp(n, q)
-      let c = inter(m,m_,n,n_)
-      let r = p.sub(c).norm()
-      ctx.beginPath()
-      let a = p.sub(c).ang()
-      let b = q.sub(c).ang()
-      if((a-b+tau)%tau<tau/2)[a,b]=[b,a]
-      ctx.arc(c.x,c.y,r,a,b)
-      ctx.stroke()
-    }
-    point(p)
-    point(q)
-    p = new H2(p);
-    q = new H2(q);
-  }
-
-  draw()
-
-  requestAnimationFrame(function tick() {
-    requestAnimationFrame(tick)
-    let f = H2.rot(.01,p)
-    p = p.do(f)
-    q = q.do(f)
-    draw()
-  })
-
-  canvas.oncontextmenu = canvas.onclick = e => {
-    e.preventDefault()
-    let x = (e.clientX-canvas.width/2)/200;
-    let y = -(e.clientY-canvas.height/2)/200;
-    let c = new R2(x, y)
-    if(c.norm2() >= 1) return
-    c = new H2(c)
-    if(e.button == 0) {
-      p = c
-    } else {
-      q = c
-    }
-    draw()
-  }
-}
-
-function inv(p) {
-  const h = p.norm2()
-  if (h === 0) return undefined
-  return p.div(h)
-}
-
-function mid(p,q) {
-  return p.add(q).div(2)
-}
-function perp(p,q) {
-  return new R2(p.x-(q.y-p.y),p.y+(q.x-p.x))
-}
-
-function inter(p,q,r,s) {
-  return new R2(
-    ((p.x*q.y-p.y*q.x) * (r.x-s.x) - (p.x-q.x) * (r.x*s.y - r.y*s.x))/((p.x-q.x)*(r.y-s.y)-(p.y-q.y)*(r.x-s.x)),
-    ((p.x*q.y-p.y*q.x) * (r.y-s.y) - (p.y-q.y) * (r.x*s.y - r.y*s.x))/((p.x-q.x)*(r.y-s.y)-(p.y-q.y)*(r.x-s.x)),
-  )
-}
 
 class Map {
   apply;
@@ -128,14 +77,19 @@ class Map {
   }
 }
 
-Object.prototype.do = function(map) { return map.apply(this) }
+class El {
+  do(map) {
+    return map.apply(this)
+  }
+}
 
-class R2 {
+class R2 extends El {
   static zero = new R2(0,0);
 
   x; y;
 
   constructor(x, y) {
+    super();
     this.x = x;
     this.y = y;
   }
@@ -206,12 +160,13 @@ class R2 {
   }
 }
 
-class C {
+class C extends El {
   static zero = new C(0, 0);
 
   r; i;
 
   constructor(r, i=0) {
+    super();
     this.r = r;
     this.i = i;
   }
@@ -283,12 +238,13 @@ class C {
   }
 }
 
-class H2 {
+class H2 extends El {
   static zero = new H2(R2.zero);
 
   r2;
 
   constructor(r2) {
+    super();
     this.r2 = r2;
   }
 
@@ -334,12 +290,13 @@ class H2 {
   }
 }
 
-class R3 {
+class R3 extends El {
   static zero = new R3(0,0,0);
 
   x; y; z;
 
   constructor(x, y, z) {
+    super();
     this.x = x;
     this.y = y;
     this.z = z;
@@ -347,28 +304,37 @@ class R3 {
 
   static from(n) {
     if(n instanceof R3) return n
-    if(n instanceof R2) return new R2(n.x, n.y, 0)
+    if(n instanceof R2) return new R3(n.x, n.y, 0)
+    if(n instanceof H3) return n.r3
     throw new Error("cannot convert to R3")
   }
   
   add(that) {
-    return new R2(this.x + that.x, this.y + that.y, this.z + that.z)
+    return new R3(this.x + that.x, this.y + that.y, this.z + that.z)
   }
 
   sub(that) {
-    return new R2(this.x - that.x, this.y - that.y, this.z + that.z)
+    return new R3(this.x - that.x, this.y - that.y, this.z - that.z)
   }
 
   mul(r) {
-    return new R2(this.x * r, this.y * r, this.z * r)
+    return new R3(this.x * r, this.y * r, this.z * r)
   }
 
   div(r) {
-    return new R2(this.x / r, this.y / r, this.z / r)
+    return new R3(this.x / r, this.y / r, this.z / r)
   }
 
   dot(that) {
     return this.x * that.x + this.y * that.y + this.z * that.z
+  }
+
+  cross(that) {
+    return new R3(
+      this.y * that.z - this.z * that.y,
+      this.z * that.x - this.x * that.z,
+      this.x * that.y - this.y * that.x,
+    )
   }
 
   norm() {
@@ -398,6 +364,8 @@ class R3 {
   static plane(u, v) {
     u = u.div(u.norm());
     v = v.sub(u.mul(u.dot(v)));
+    if (!v.norm2()) v = u.cross(new R3(1,0,0))
+    if (!v.norm2()) v = u.cross(new R3(0,1,0))
     v = v.div(v.norm());
     return new Map(
       p => new R2(p.dot(u), p.dot(v)),
@@ -406,12 +374,13 @@ class R3 {
   }
 }
 
-class H3 {
+class H3 extends El {
   static zero = new H3(R3.zero);
 
   r3;
 
   constructor(r3) {
+    super();
     this.r3 = r3;
   }
 
@@ -425,23 +394,22 @@ class H3 {
     return this.do(H3.tx(from, to))
   }
 
-  static rot(ang, around) {
-    if (around == null) {
-      const rot = R2.rot(ang)
-      return new Map(h => new H2(rot.apply(h.r2)))
-    } else {
-      return H2.tx(around, null).then(H2.rot(ang)).then(H2.tx(null, around))
-    }
+  static plane(u, v) {
+    const plane = R3.plane(u.r3, v.r3)
+    return new Map(
+      p => new H2(plane.apply(p.r3)),
+      p => new H3(plane.inv.apply(p.r2)),
+    )
   }
 
   static tx(from, to) {
     if(from == null || to == null) {
       return new Map(p => {
-        const plane = R3.plane((from ?? to).r3, p);
-        plane.inv(new H2(plane.apply(p.r3)).tx(
+        const plane = H3.plane(from ?? to, p);
+        return plane.inv.apply(plane.apply(p).tx(
           from?.do(plane),
           to?.do(plane),
-        ).r2)
+        ))
       });
     }
     return H3.tx(from, null).then(H3.tx(null, to))
