@@ -1,49 +1,270 @@
-
 import * as t from "https://esm.sh/three@0.184.0";
 import { OrbitControls } from 'https://esm.sh/three@0.184.0/addons/controls/OrbitControls.js';
 
 const width = window.innerWidth, height = window.innerHeight;
 
-const camera = new t.PerspectiveCamera( 70, width / height, 0.01, 100 );
-camera.position.set(0,0,2.5);
+const camera = new t.PerspectiveCamera(70, width / height, 0.01, 100);
+camera.position.set(0,0,1.8);
 
 const scene = new t.Scene();
 
-function point(p) {
+scene.add(new t.PointLight(undefined, 1))
+scene.add(new t.AmbientLight(undefined, 1))
+const d = new t.DirectionalLight(undefined, 1)
+d.position.set(0,1,.2)
+scene.add(d)
+
+const model = new t.Group()
+model.lookAt(1,-.2,-.1)
+scene.add(model);
+
+const pointMat = new t.MeshNormalMaterial();
+const edgeMat = new t.MeshStandardMaterial({
+  // color: new t.Color(0xffffff),
+  // color: new t.Color(0xbbbbbb),
+  color: new t.Color(0x444444),
+  metalness: .95,
+  roughness: .2,
+})
+// const faceMat = new t.MeshStandardMaterial({
+//   color: new t.Color(0x69b2ff),
+//   transparent: true,
+//   opacity: .5,
+//   side: t.DoubleSide,
+//   metalness: .5,
+//   roughness: .5,
+//   // emissive: new t.Color(0x111111),
+// });
+const faceMat = new t.MeshNormalMaterial({
+  transparent: true,
+  opacity: .5,
+  side: t.DoubleSide,
+});
+function drawPoint(p, s = 1) {
   p = R3.from(p)
-  const mesh = new t.Mesh(new t.SphereGeometry(.01), new t.MeshNormalMaterial());
+  const mesh = new t.Mesh(new t.SphereGeometry(.01 * s), pointMat);
   mesh.position.set(p.x,p.y,p.z)
-  scene.add(mesh)
+  model.add(mesh)
 }
 
-scene.add(new t.Mesh(new t.SphereGeometry(1, 100, 100), new t.MeshBasicMaterial({
-  color: new t.Color("#ffffff"),
-  opacity: .06,
-  transparent: true,
-  side: t.DoubleSide
-})))
+function drawEdge(p, q, mat = edgeMat) {
+  const geo = new t.CylinderGeometry(.02, .02, 1, 8, 8, true)
+  geo.translate(0, .5, 0)
+  const y = q.tx(p, null).r3;
+  const yn = y.norm();
+  let x = new R3(1,0,0).sub(y.mul(y.x/yn/yn))
+  if (x.tiny()) x = new R3(0,1,0).sub(y.mul(y.y/yn/yn))
+  x = x.div(x.norm());
+  let z = x.cross(y);
+  z = z.div(yn);
+  warpGeo(geo, new Map(v => new H3(x.mul(v.x).add(z.mul(v.z))).tx(null, new H3(y.mul(v.y))).tx(null, p).r3));
+  const mesh = new t.Mesh(geo, mat);
+  model.add(mesh)
+}
 
-function randR3() {
-  const theta = Math.random() * tau
-  const phi = Math.acos(1 - 2 * Math.random())
-  const r = Math.random() ** (1/3) * .8
-  return new R3(
-    cos(theta) * sin(phi) * r,
-    sin(theta) * sin(phi) * r,
-    cos(phi) * r,
-  )
+function drawFace(p, q, r) {
+  const n = 8;
+  const points = [p];
+  const tris = []
+  let last = [0]
+  for(let i = 1; i <= n; i++) {
+    const a = p.lerp(q, i/n)
+    const b = p.lerp(r, i/n)
+    const cur = []
+    for(let j = 0; j <= i; j++) {
+      const p = points.push(a.lerp(b, j/i))-1
+      cur.push(p)
+      if (j !== 0) {
+        tris.push([last[j-1],cur[j-1],p])
+        if (j !== i) {
+          tris.push([last[j-1],p,last[j]])
+        }
+      }
+    }
+    last = cur;
+  }
+  const geo = new t.BufferGeometry()
+  geo.setFromPoints(points.map(p => new t.Vector3(p.r3.x, p.r3.y, p.r3.z)));
+  geo.setIndex(tris.flat())
+  geo.computeVertexNormals()
+  const mesh = new t.Mesh(geo, faceMat);
+  model.add(mesh)
+}
+
+// scene.add(new t.Mesh(new t.SphereGeometry(1, 100, 100), new t.MeshBasicMaterial({
+//   color: new t.Color("#ffffff"),
+//   opacity: .06,
+//   transparent: true,
+//   side: t.DoubleSide
+// })))
+
+function warpGeo(geo, map) {
+  const vertices = geo.attributes.position
+  for (let i = 0; i < vertices.count; i++) {
+    let v = new R3(vertices.getX(i), vertices.getY(i), vertices.getZ(i));
+    v = map.apply(v);
+    vertices.setX(i, v.x);
+    vertices.setY(i, v.y);
+    vertices.setZ(i, v.z);
+  }
+  geo.computeVertexNormals();
 }
 
 function main() {
-  for(let i = 0; i < 10; i++) {
-    let p = new H3(randR3())
-    let q = new H3(randR3())
-    point(p)
-    point(q)
-    for(let t = 0; t <= 1; t += .01) {
-      point(p.lerp(q, t))
+  let c = null;
+  const point = (i, phi = bestPhi, len = bestLen) => {
+    const theta = i * tau / 5;
+    return new H3(new R3(cos(theta) * len * cos(phi), -len * sin(phi), sin(theta) * len * cos(phi))).tx(c, null);
+  }
+  let bestLen = phi => solve(100, 0, 1, len => 
+    point(0, phi, len).r3Dist(point(1, phi, len)) - len
+  );
+  const bestPhi = solve(100, 0, tau/4, phi => {
+    const len = bestLen(phi);
+    return tau/3 - H3.ang(
+      point(0, phi, len),
+      point(2, phi, len),
+      H3.zero.lerp(point(1, phi, len), 1/2),
+    )
+  });
+  bestLen = bestLen(bestPhi)
+  const r = solve(100, 0, 1, r => r - point(0).r3Dist(new H3(new R3(0, -r, 0))));
+  c = new H3(new R3(0, -r, 0));
+  const top = c.neg();
+  const points = [
+    H3.zero,
+    top, top.neg(),
+    point(0), point(0).neg(),
+    point(1), point(1).neg(),
+    point(2), point(2).neg(),
+    point(3), point(3).neg(),
+    point(4), point(4).neg(),
+  ];
+  const edges = [...Array(5)].flatMap((_, i) => [
+    [1, 3 + i * 2],
+    [2, 4 + i * 2],
+    [3 + i * 2, 3 + (i+1)%5 * 2],
+    [4 + (i+2)%5 * 2, 4 + (i+3)%5 * 2],
+    [4 + (i+2)%5 * 2, 3 + i * 2],
+    [4 + (i+3)%5 * 2, 3 + i * 2],
+  ])
+  const faces = [...Array(5)].flatMap((_, i) => {
+    const p = point(i)
+    const q = point(i+1)
+    const r = point(i+2).neg()
+    const s = point(i+3).neg()
+    return [
+      [top, q, p],
+      [top.neg(), p.neg(), q.neg()],
+      [p, q, s],
+      [p, s, r],
+    ]
+  })
+  const mid = solve(100, 0, 1, q => 
+    faces[0][0].lerp(faces[0][1], 1/2).lerp(faces[0][2], q)
+      .tx(faces[0][1].lerp(faces[0][2], 1/2).lerp(faces[0][0], q), null)
+      .r3.x
+  )
+
+  const midpoints = faces.map(face =>
+    face[0].lerp(face[1], 1/2).lerp(face[2], mid)
+  );
+
+  // for(const face of faces) {
+  //   const c = face[0].lerp(face[1], 1/2).lerp(face[2], mid)
+  //   for (let i = 0; i < 3; i += 1) {
+  //     let p = face[i].lerp(c, .0)
+  //     let q = face[(i+1)%3].lerp(c, .0)
+  //     let r = face[(i+2)%3].lerp(c, .0)
+  //     for(let t = 0; t <= 1; t += .01) {
+  //       drawPoint(p.lerp(q, t))
+  //       drawPoint(p.lerp(q, 1/2).lerp(r, t*mid))
+  //     }
+  //   }
+  // }
+
+  let n = 0
+  let l = Infinity;
+  function drawCell(points, mat) {
+    for(const edge of edges) {
+      l = min(l, points[edge[0]].r3.sub(points[edge[1]].r3).norm())
+      if(!uniq(points[edge[0]].r3.add(points[edge[1]].r3).div(2))) continue;
+      n += 1;
+      drawEdge(points[edge[0]], points[edge[1]], mat);
     }
   }
+
+  const epsilon = 1e-5
+  const epsilon2 = epsilon ** 2
+  const buckets = {};
+  function uniq(point) {
+    point = R3.from(point);
+    const x = floor(point.x / epsilon);
+    const y = floor(point.y / epsilon);
+    const z = floor(point.z / epsilon);
+    for (const x_ of [x-1,x,x+1])
+    for (const y_ of [y-1,y,y+1])
+    for (const z_ of [z-1,z,z+1]) {
+      const bucket = buckets[[x_, y_, z_]]
+      if (bucket?.some(p => point.sub(p).norm2() < epsilon2)) {
+        return false;
+      }
+    }
+    (buckets[[x, y, z]] ??= []).push(point)
+    return true;
+  }
+
+  // 6570
+  // 81180
+
+  let cells = [points];
+  drawCell(points, new t.MeshNormalMaterial());
+  for(let i = 0; i < 2; i++) {
+    const oldCells = cells;
+    cells = [];
+    for(const cell of oldCells) {
+      for(const p of midpoints) {
+        const points = flip(cell, p);
+        if(!uniq(points[0])) {
+          continue;
+        }
+        drawCell(points);
+        cells.push(points);
+      }
+    }
+  }
+
+  console.log({ n, l })
+  console.log(Math.max(...Object.values(buckets).map(x=>x.length)))
+
+  for(const face of faces) {
+    drawFace(...face)
+  }
+
+  function flip(points, p) {
+    const v = p.r3.div(p.r3.norm());
+    return points.map(q => {
+      q = q.tx(p, null).r3;
+      q = q.sub(v.mul(2 * q.dot(v)));
+      return new H3(q).tx(null, p);
+    });
+  }
+}
+
+function hashPoint(p,m=false) {
+  p = R3.from(p)
+  return ""+[p.x,p.y,p.z].map(x=>Math[m ? "floor" : "ceil"](x*1000))
+}
+
+function solve(steps, min, max, goal) {
+  for(let i = 0; i < steps; i++) {
+    const avg = (min + max)/2
+    const score = goal(avg);
+    if (score === 0) return avg;
+    if (score < 0) min = avg
+    else max = avg
+  }
+  return (min + max)/2
 }
 
 const renderer = new t.WebGLRenderer({ antialias: true });
@@ -60,7 +281,7 @@ function tick() {
 }
 
 const tau = Math.PI * 2;
-const { cos, sin, tan, sqrt, min, max, atan2, hypot, tanh, atanh } = Math
+const { acos, cos, sin, tan, sqrt, min, max, atan2, hypot, tanh, atanh, floor, ceil } = Math
 
 class Map {
   apply;
@@ -337,6 +558,10 @@ class R3 extends El {
     )
   }
 
+  tiny() {
+    return !(this.norm2() >= 1e-12)
+  }
+
   norm() {
     return hypot(this.x, this.y, this.z)
   }
@@ -363,14 +588,23 @@ class R3 extends El {
 
   static plane(u, v) {
     u = u.div(u.norm());
+    if (u.tiny()) u = new R3(1,0,0)
     v = v.sub(u.mul(u.dot(v)));
-    if (!v.norm2()) v = u.cross(new R3(1,0,0))
-    if (!v.norm2()) v = u.cross(new R3(0,1,0))
+    if (v.tiny()) v = u.cross(new R3(1,0,0))
+    if (v.tiny()) v = u.cross(new R3(0,1,0))
     v = v.div(v.norm());
     return new Map(
       p => new R2(p.dot(u), p.dot(v)),
       p => u.mul(p.x).add(v.mul(p.y)),
     )
+  }
+
+  static ang(a, b, o = null) {
+    if (o) {
+      a = a.sub(o)
+      b = b.sub(o)
+    }
+    return acos(a.dot(b) / a.norm() / b.norm())
   }
 }
 
@@ -403,6 +637,9 @@ class H3 extends El {
   }
 
   static tx(from, to) {
+    if(from == null && to == null) {
+      return new Map(p => p);
+    }
     if(from == null || to == null) {
       return new Map(p => {
         const plane = H3.plane(from ?? to, p);
@@ -415,10 +652,22 @@ class H3 extends El {
     return H3.tx(from, null).then(H3.tx(null, to))
   }
 
+  r3Dist(that) {
+    return this.tx(that, null).r3.norm()
+  }
+
+  neg() {
+    return new H3(this.r3.mul(-1))
+  }
+  
   lerp(that, t) {
     that = that.tx(this, null)
     that = new H3(that.r3.mul(tanh(t * atanh(that.r3.norm())) / that.r3.norm()))
     return that.tx(null, this)
+  }
+
+  static ang(a, b, o = null) {
+    return R3.ang(a.tx(o, null).r3, b.tx(o, null).r3)
   }
 }
 
