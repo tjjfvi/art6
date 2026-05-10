@@ -2,16 +2,31 @@
   "version": "3",
   "redirects": {
     "https://esm.sh/@types/three@~0.183.1/index.d.ts": "https://esm.sh/@types/three@0.183.1/index.d.ts",
+    "https://esm.sh/@types/three@~0.184.1/build/three.core.d.ts": "https://esm.sh/@types/three@0.184.1/build/three.core.d.ts",
+    "https://esm.sh/@types/three@~0.184.1/index.d.ts": "https://esm.sh/@types/three@0.184.1/index.d.ts",
     "https://esm.sh/three": "https://esm.sh/three@0.184.0"
   },
   "remote": {
     "https://esm.sh/three/addons/controls/OrbitControls.js": "ac6f4ddcd11bbf5c19cf775f08e9d2ec7841c5228abc90c5f4fad9d6db215f5c",
     "https://esm.sh/three@0.184.0": "e1f3ba3589d1d209ccb5e5313e48ff56aec1a5292f5cec2c87398d03460b10a2",
     "https://esm.sh/three@0.184.0/addons/controls/OrbitControls.js": "ac6f4ddcd11bbf5c19cf775f08e9d2ec7841c5228abc90c5f4fad9d6db215f5c",
+    "https://esm.sh/three@0.184.0/addons/controls/OrbitControls.js?dev": "f162243832c375cf68feef21c68f789b24574fb262c43cdacb208ac64d1df065",
+    "https://esm.sh/three@0.184.0/denonext/addons/controls/OrbitControls.development.mjs": "f4b713038ef3bd7891ab23ce4b290c51eb94e7a9851dd3354f9cc3f0a89d9d7c",
+    "https://esm.sh/three@0.184.0/denonext/build/three.core.development.mjs": "ea383182315e3ddd972a9385a8eb72210204d352cb4f3a1ec3dd7c5fd23d71fb",
     "https://esm.sh/three@0.184.0/denonext/build/three.core.mjs": "3f5ea85e3ca2d1cbaf8fabbb6c7db9c0d2a89865392a65da4366d5b82301134f",
+    "https://esm.sh/three@0.184.0/denonext/three.development.mjs": "3386ccc6ab5f7393264e0ae5d5ad11678cc8d7fd77bfcb5a6e877698cd3d658f",
     "https://esm.sh/three@0.184.0/denonext/three.mjs": "2e78b58210e60165f73c9c3e1b968639dd894cb2f5cbe281bc776ee678e8ebce",
+    "https://esm.sh/three@0.184.0/denonext/tsl.development.mjs": "ff7b5deb2884b57e7984ea3e9b69ba61c5031315a633b6060930707406030b12",
+    "https://esm.sh/three@0.184.0/denonext/tsl.mjs": "2927cc211f94377936ab8bb35fadf5d92136bed3d221c532701f43c6f0d7e659",
+    "https://esm.sh/three@0.184.0/denonext/webgpu.development.mjs": "6117916e6beb439d56752f720d437d52e053583f885bc6acd6064a5d74dc47f4",
+    "https://esm.sh/three@0.184.0/denonext/webgpu.mjs": "1a71c6777a60fd99427118bca19168f3ceac06d966ca29aa52141a0bd384b911",
     "https://esm.sh/three@0.184.0/es2022/addons/controls/OrbitControls.mjs": "85d5701e4389558696a27110d24ab8e2ccacbdcc6417590ec749f71c24a2b527",
     "https://esm.sh/three@0.184.0/es2022/build/three.core.mjs": "6854e5812840633edb45d3fa4e139fc4846bfff544ab542dfbbd7ebd0841f616",
-    "https://esm.sh/three@0.184.0/es2022/three.mjs": "2e78b58210e60165f73c9c3e1b968639dd894cb2f5cbe281bc776ee678e8ebce"
+    "https://esm.sh/three@0.184.0/es2022/three.mjs": "2e78b58210e60165f73c9c3e1b968639dd894cb2f5cbe281bc776ee678e8ebce",
+    "https://esm.sh/three@0.184.0/tsl": "c46b9cb916fd7745cd19a0eb127c1e00bf43ae74a05960afc97e430f6a14d94f",
+    "https://esm.sh/three@0.184.0/tsl?dev": "6aa7f4e3660972402fa866db3793abfd86faff740818d4e9abb7acd66a02535c",
+    "https://esm.sh/three@0.184.0/webgpu": "635cd4a42aad3f082c4382d77f36444ee32fc18a6b975e92d5db90f1dd7801f7",
+    "https://esm.sh/three@0.184.0/webgpu?dev": "2f952f9c138d12f0b80d0ca935ca2a0c4a8785fd7cf2b1c7acee6f0ef5c258f4",
+    "https://esm.sh/three@0.184.0?dev": "0dd090fcae6820fa9076c26d8da026d825508eee271ba1303bf1beda19b81f81"
   }
 }
