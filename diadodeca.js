@@ -1,17 +1,16 @@
 /// <reference lib="dom"/>
-// @ts-check
 
 import * as t from "https://esm.sh/three@0.184.0";
 import { OrbitControls } from 'https://esm.sh/three@0.184.0/addons/controls/OrbitControls.js';
 
 const width = window.innerWidth, height = window.innerHeight;
 
-const camera = new t.PerspectiveCamera( 70, width / height, 0.01, 100 );
+const camera = new t.PerspectiveCamera( 100, width / height, 0.01, 100 );
 camera.position.set(0,0,9);
-camera.position.set(4,4,4);
+// camera.position.set(4,4,4);
+// camera.position.set(4.5,4.5,4.5);
 
 const scene = new t.Scene();
-
 
 let faces = [
   [
@@ -90,8 +89,8 @@ const edgeLength = Math.sqrt(3)
 
 const material = new t.MeshStandardMaterial();
 
-scene.add(new t.PointLight(new t.Color("#bdc3c7"),20))
-const light = new t.DirectionalLight(new t.Color("#151820"),2)
+scene.add(new t.PointLight(new t.Color("#bdc3c7"),40))
+const light = new t.DirectionalLight(new t.Color("#151820"),4)
 light.position.set(0,0,1)
 light.position.set(1,1,1)
 scene.add(light)
@@ -139,3 +138,20 @@ function tick() {
   controls.update();
   renderer.render( scene, camera );
 }
+
+window.addEventListener("keypress", async () => {
+  const res = 8
+    const width = window.innerWidth * res
+    const height = window.innerHeight * res
+  const canvas = new OffscreenCanvas(width, height)
+  const renderer = new t.WebGLRenderer({ canvas, antialias: true })
+  renderer.render(scene, camera)
+  const blob = await canvas.convertToBlob()
+  console.log(canvas, blob)
+  let url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href=url
+  link.download="image.png"
+  link.click()
+})
+
