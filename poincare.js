@@ -3,8 +3,11 @@ import { OrbitControls } from 'https://esm.sh/three@0.184.0/addons/controls/Orbi
 
 const width = window.innerWidth, height = window.innerHeight;
 
-const camera = new t.PerspectiveCamera(70, width / height, 0.01, 100);
-camera.position.set(0,0,1.8);
+const shape = window.location.search.includes("dodeca") ? dodecahedron : icosahedron;
+const inside = window.location.search.includes("inside")
+
+const camera = new t.PerspectiveCamera(inside ? 100 : 70, width / height, 0.01, 100);
+camera.position.set(0,0,inside ? .001 : 1.8);
 
 const scene = new t.Scene();
 
@@ -20,26 +23,16 @@ scene.add(model);
 
 const pointMat = new t.MeshNormalMaterial();
 const edgeMat = new t.MeshStandardMaterial({
-  // color: new t.Color(0xffffff),
-  // color: new t.Color(0xbbbbbb),
   color: new t.Color(0x444444),
   metalness: .95,
   roughness: .2,
 })
-// const faceMat = new t.MeshStandardMaterial({
-//   color: new t.Color(0x69b2ff),
-//   transparent: true,
-//   opacity: .5,
-//   side: t.DoubleSide,
-//   metalness: .5,
-//   roughness: .5,
-//   // emissive: new t.Color(0x111111),
-// });
 const faceMat = new t.MeshNormalMaterial({
   transparent: true,
   opacity: .5,
   side: t.DoubleSide,
 });
+
 function drawPoint(p, s = 1) {
   p = R3.from(p)
   const mesh = new t.Mesh(new t.SphereGeometry(.01 * s), pointMat);
@@ -49,6 +42,13 @@ function drawPoint(p, s = 1) {
 
 function drawEdge(p, q, mat = edgeMat) {
   const geo = new t.CylinderGeometry(.02, .02, 1, 8, 8, true)
+  for (let i = 0; i < geo.index.count; i++) {
+    const p = geo.index.getComponent(i, 0);
+    if(p % 9 == 8) {
+      geo.index.setComponent(i, 0, p - 8)
+    }
+  }
+  geo.setIndex(geo.index)
   geo.translate(0, .5, 0)
   const y = q.tx(p, null).r3;
   const yn = y.norm();
@@ -62,22 +62,29 @@ function drawEdge(p, q, mat = edgeMat) {
   model.add(mesh)
 }
 
-function drawFace(p, q, r) {
+function drawFace(center, ...vertices) {
   const n = 8;
-  const points = [p];
+  const points = [center];
+  const sides = vertices.length
   const tris = []
-  let last = [0]
+  let last = vertices.map(() => [0])
   for(let i = 1; i <= n; i++) {
-    const a = p.lerp(q, i/n)
-    const b = p.lerp(r, i/n)
     const cur = []
-    for(let j = 0; j <= i; j++) {
-      const p = points.push(a.lerp(b, j/i))-1
-      cur.push(p)
-      if (j !== 0) {
-        tris.push([last[j-1],cur[j-1],p])
-        if (j !== i) {
-          tris.push([last[j-1],p,last[j]])
+    for(let j = 0; j < sides; j++) {
+      const a = center.lerp(vertices[j], i/n);
+      const b = center.lerp(vertices[(j+1)%sides], i/n);
+      const sub = []
+      for(let k = 0; k < i; k++) {
+        sub.push(points.push(a.lerp(b, k/i))-1)
+      }
+      cur.push(sub)
+    }
+    cur.forEach((arr,j) => arr.push(cur[(j+1)%sides][0]))
+    for(let j = 0; j < sides; j++) {
+      for(let k = 0; k < i; k++) {
+        tris.push([last[j][k],cur[j][k],cur[j][k+1]])
+        if (k !== i - 1) {
+          tris.push([last[j][k],cur[j][k+1],last[j][k+1]])
         }
       }
     }
@@ -91,13 +98,6 @@ function drawFace(p, q, r) {
   model.add(mesh)
 }
 
-// scene.add(new t.Mesh(new t.SphereGeometry(1, 100, 100), new t.MeshBasicMaterial({
-//   color: new t.Color("#ffffff"),
-//   opacity: .06,
-//   transparent: true,
-//   side: t.DoubleSide
-// })))
-
 function warpGeo(geo, map) {
   const vertices = geo.attributes.position
   for (let i = 0; i < vertices.count; i++) {
@@ -110,16 +110,17 @@ function warpGeo(geo, map) {
   geo.computeVertexNormals();
 }
 
-function main() {
+
+function icosahedron() {
   let c = null;
   const point = (i, phi = bestPhi, len = bestLen) => {
     const theta = i * tau / 5;
     return new H3(new R3(cos(theta) * len * cos(phi), -len * sin(phi), sin(theta) * len * cos(phi))).tx(c, null);
   }
-  let bestLen = phi => solve(100, 0, 1, len => 
+  let bestLen = phi => solve(0, 1, len => 
     point(0, phi, len).r3Dist(point(1, phi, len)) - len
   );
-  const bestPhi = solve(100, 0, tau/4, phi => {
+  const bestPhi = solve(0, tau/4, phi => {
     const len = bestLen(phi);
     return tau/3 - H3.ang(
       point(0, phi, len),
@@ -128,11 +129,11 @@ function main() {
     )
   });
   bestLen = bestLen(bestPhi)
-  const r = solve(100, 0, 1, r => r - point(0).r3Dist(new H3(new R3(0, -r, 0))));
+  const r = solve(0, 1, r => r - point(0).r3Dist(new H3(new R3(0, -r, 0))));
   c = new H3(new R3(0, -r, 0));
+
   const top = c.neg();
   const points = [
-    H3.zero,
     top, top.neg(),
     point(0), point(0).neg(),
     point(1), point(1).neg(),
@@ -140,57 +141,89 @@ function main() {
     point(3), point(3).neg(),
     point(4), point(4).neg(),
   ];
-  const edges = [...Array(5)].flatMap((_, i) => [
-    [1, 3 + i * 2],
-    [2, 4 + i * 2],
-    [3 + i * 2, 3 + (i+1)%5 * 2],
-    [4 + (i+2)%5 * 2, 4 + (i+3)%5 * 2],
-    [4 + (i+2)%5 * 2, 3 + i * 2],
-    [4 + (i+3)%5 * 2, 3 + i * 2],
-  ])
-  const faces = [...Array(5)].flatMap((_, i) => {
-    const p = point(i)
-    const q = point(i+1)
-    const r = point(i+2).neg()
-    const s = point(i+3).neg()
-    return [
-      [top, q, p],
-      [top.neg(), p.neg(), q.neg()],
-      [p, q, s],
-      [p, s, r],
-    ]
-  })
-  const mid = solve(100, 0, 1, q => 
-    faces[0][0].lerp(faces[0][1], 1/2).lerp(faces[0][2], q)
-      .tx(faces[0][1].lerp(faces[0][2], 1/2).lerp(faces[0][0], q), null)
-      .r3.x
-  )
 
-  const midpoints = faces.map(face =>
-    face[0].lerp(face[1], 1/2).lerp(face[2], mid)
+  const edges = [...Array(5)].flatMap((_, i) => [
+    [0, 2 + i * 2],
+    [1, 3 + i * 2],
+    [2 + i * 2, 2 + (i+1)%5 * 2],
+    [3 + (i+2)%5 * 2, 3 + (i+3)%5 * 2],
+    [3 + (i+2)%5 * 2, 2 + i * 2],
+    [3 + (i+3)%5 * 2, 2 + i * 2],
+  ]);
+
+  const faces = [...Array(5)].flatMap((_, i) => [
+    [0, 2 + (i+1)%5 * 2, 2 + i * 2],
+    [1, 3 + i * 2, 3 + (i+1)%5 * 2],
+    [2 + i * 2, 2 + (i+1)%5 * 2, 3 + (i+3)%5 * 2],
+    [2 + i * 2, 3 + (i+3)%5 * 2, 3 + (i+2)%5 * 2],
+  ]);
+
+  const getCenter = (face, mid) => 
+    points[face[0]].lerp(points[face[1]], 1/2).lerp(points[face[2]], mid)
+  ;
+
+  const mid = solve(0, 1, t => 
+    getCenter(faces[0], t).tx(getCenter([...faces[0].slice(1), faces[0][0]], t)).r3.x
   );
 
-  // for(const face of faces) {
-  //   const c = face[0].lerp(face[1], 1/2).lerp(face[2], mid)
-  //   for (let i = 0; i < 3; i += 1) {
-  //     let p = face[i].lerp(c, .0)
-  //     let q = face[(i+1)%3].lerp(c, .0)
-  //     let r = face[(i+2)%3].lerp(c, .0)
-  //     for(let t = 0; t <= 1; t += .01) {
-  //       drawPoint(p.lerp(q, t))
-  //       drawPoint(p.lerp(q, 1/2).lerp(r, t*mid))
-  //     }
-  //   }
-  // }
+  const centers = faces.map(face => getCenter(face, mid));
 
-  let n = 0
-  let l = Infinity;
+  return { points, edges, faces, centers, limit: .94 }
+}
+
+function dodecahedron() {
+  const icos = icosahedron()
+
+  const s = solve(0, 1/icos.centers[0].r3.norm(), s => {
+    const [a, b, c, d] = [0, 2, 6, 18].map(i => new H3(icos.centers[i].r3.mul(s)));
+    return tau/5 - H3.ang(c, d, a.lerp(b, 1/2))
+  })
+
+  const points = icos.centers.map(p => new H3(p.r3.mul(s)))
+
+  const icosFaceEdges = icos.faces.map((face) => face.map((p, i) => [p, face[(i+1)%face.length]]));
+  const edges = icos.edges.map(e =>
+    [
+      icosFaceEdges.findIndex(edges => edges.some(f => e[0] == f[0] && e[1] == f[1])),
+      icosFaceEdges.findIndex(edges => edges.some(f => e[0] == f[1] && e[1] == f[0])),
+    ]
+  );
+
+  const faces = icos.points.map((_, p) => {
+    let f = icos.faces.findIndex(f => f.includes(p))
+    console.log(f, p, icos.faces)
+    const points = []
+    do {
+      const i = icos.faces[f].indexOf(p)
+      points.push(f)
+      f = icos.faces.findIndex(g => g != icos.faces[f] && g.includes(p) && g.includes(icos.faces[f][(i+1)%icos.faces[f].length]))
+    } while(f != points[0])
+    return points.reverse()
+  });
+
+  const getCenter = (face, mid) => 
+    points[face[0]].lerp(points[face[1]], 1/2).lerp(points[face[3]], mid)
+  ;
+
+  const mid = solve(0, 1, t => 
+    -getCenter(faces[0], t).tx(getCenter([...faces[0].slice(1), faces[0][0]], t)).r3.x
+  );
+
+  const centers = faces.map(face => getCenter(face, mid));
+
+  return { points, edges, faces, centers, limit: .97 }
+}
+
+function main() {
+  const { points, edges, faces, centers, limit } = shape();
+
+  let n = 0;
   function drawCell(points, mat) {
     for(const edge of edges) {
-      l = min(l, points[edge[0]].r3.sub(points[edge[1]].r3).norm())
-      if(!uniq(points[edge[0]].r3.add(points[edge[1]].r3).div(2))) continue;
+      const [a, b] = [points[edge[0]], points[edge[1]]];
+      if(!uniq(a.r3.add(b.r3).div(2))) continue;
       n += 1;
-      drawEdge(points[edge[0]], points[edge[1]], mat);
+      drawEdge(a, b, mat);
     }
   }
 
@@ -214,51 +247,45 @@ function main() {
     return true;
   }
 
-  // 6570
-  // 81180
-
-  let cells = [points];
+  let cells = [{ center: H3.zero, points }];
+  // let cells = [];
   drawCell(points, new t.MeshNormalMaterial());
   for(let i = 0; cells.length != 0; i++) {
     const oldCells = cells;
     cells = [];
     for(const cell of oldCells) {
-      for(const p of midpoints) {
-        const points = flip(cell, p);
-        if(!uniq(points[0])) {
+      for(const p of centers) {
+        const newCell = flip(cell, p);
+        if(!uniq(newCell.center)) {
           continue;
         }
-        if(points[0].r3.norm() >= .94) continue;
-        drawCell(points);
-        cells.push(points);
+        if(newCell.center.r3.norm() >= limit) continue;
+        drawCell(newCell.points);
+        cells.push(newCell);
       }
     }
   }
 
-  console.log({ n, l })
-  console.log(Math.max(...Object.values(buckets).map(x=>x.length)))
+  console.log({ n })
 
-  for(const face of faces) {
-    drawFace(...face)
+  for(const [i, face] of faces.entries()) {
+    drawFace(centers[i], ...face.map(i => points[i]))
   }
 
-  function flip(points, p) {
+  function flip(cell, p) {
     const v = p.r3.div(p.r3.norm());
-    return points.map(q => {
+    const f = q => {
       q = q.tx(p, null).r3;
       q = q.sub(v.mul(2 * q.dot(v)));
       return new H3(q).tx(null, p);
-    });
+    };
+    return { center: f(cell.center), points: cell.points.map(f) }
   }
+
 }
 
-function hashPoint(p,m=false) {
-  p = R3.from(p)
-  return ""+[p.x,p.y,p.z].map(x=>Math[m ? "floor" : "ceil"](x*1000))
-}
-
-function solve(steps, min, max, goal) {
-  for(let i = 0; i < steps; i++) {
+function solve(min, max, goal) {
+  for(let i = 0; i < 100; i++) {
     const avg = (min + max)/2
     const score = goal(avg);
     if (score === 0) return avg;
