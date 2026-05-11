@@ -219,7 +219,7 @@ function main() {
 
   let cells = [points];
   drawCell(points, new t.MeshNormalMaterial());
-  for(let i = 0; i < 2; i++) {
+  for(let i = 0; cells.length != 0; i++) {
     const oldCells = cells;
     cells = [];
     for(const cell of oldCells) {
@@ -228,6 +228,7 @@ function main() {
         if(!uniq(points[0])) {
           continue;
         }
+        if(points[0].r3.norm() >= .94) continue;
         drawCell(points);
         cells.push(points);
       }
